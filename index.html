@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HOLLOW — Key System (24h)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0e0c14;
+    color: #e8e2f0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    padding: 24px 16px;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; }
+  .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .brand-mark {
+    width: 42px; height: 42px; background: #b48cff; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 22px; color: #0e0c14;
+    box-shadow: 0 0 24px rgba(180,140,255,0.4);
+  }
+  .brand h1 { font-size: 20px; font-weight: 700; }
+  .brand p { font-size: 12px; color: #8c849c; margin-top: 2px; }
+  .card {
+    background: #1a1720;
+    border: 1px solid rgba(180,140,255,0.15);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  .tabs { display: flex; gap: 6px; margin-bottom: 20px; background: #221e2c; padding: 4px; border-radius: 10px; }
+  .tab {
+    flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 600;
+    color: #8c849c; border-radius: 7px; cursor: pointer;
+    -webkit-user-select: none; user-select: none;
+  }
+  .tab.active { background: #b48cff; color: #0e0c14; }
+  .pane { display: none; }
+  .pane.active { display: block; }
+
+  .label {
+    font-size: 12px; color: #8c849c; margin-bottom: 8px;
+    text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600;
+  }
+  .keybox {
+    background: #221e2c; border: 1px solid rgba(180,140,255,0.2);
+    border-radius: 10px; padding: 16px 18px;
+    font-family: Consolas, Monaco, monospace; font-size: 15px;
+    color: #b48cff; word-break: break-all;
+    margin-bottom: 10px; min-height: 52px;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; letter-spacing: 1px;
+  }
+  .keybox.empty { color: #8c849c; font-style: italic; }
+  .countdown, .cooldown {
+    background: #221e2c; border-radius: 8px; padding: 10px;
+    text-align: center; font-family: Consolas, monospace;
+    font-size: 13px; color: #8c849c; margin-bottom: 10px;
+    display: none;
+  }
+  .countdown strong { color: #50dc78; font-size: 15px; }
+  .cooldown { border: 1px solid rgba(255,176,64,0.3); color: #ffb040; }
+  .cooldown strong { color: #ffb040; font-size: 15px; }
+
+  .btn {
+    width: 100%; padding: 14px; border: none; border-radius: 10px;
+    font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: 0.3px;
+  }
+  .btn-primary { background: #b48cff; color: #0e0c14; box-shadow: 0 8px 24px rgba(180,140,255,0.25); }
+  .btn-primary:hover:not(:disabled) { background: #c6a3ff; }
+  .btn-primary:disabled { background: #3a3448; color: #8c849c; cursor: not-allowed; box-shadow: none; }
+  .btn-secondary { background: #221e2c; color: #e8e2f0; border: 1px solid rgba(180,140,255,0.2); margin-top: 10px; }
+  .btn-ok { background: #50dc78; color: #0e0c14; margin-top: 10px; }
+  .btn-danger { background: #ff5050; color: #fff; margin-top: 10px; }
+  .row { display: flex; gap: 10px; }
+
+  .history { margin-top: 12px; max-height: 340px; overflow-y: auto; padding-right: 4px; }
+  .history-item {
+    background: #221e2c; border-radius: 8px; padding: 12px 14px;
+    margin-bottom: 8px; border-left: 3px solid #50dc78;
+  }
+  .history-item.expired { border-left-color: #ff5050; opacity: 0.7; }
+  .history-item.warn { border-left-color: #ffb040; }
+  .history-key { font-family: Consolas, monospace; font-size: 12px; color: #b48cff; word-break: break-all; display: block; margin-bottom: 6px; }
+  .history-meta { display: flex; justify-content: space-between; font-size: 11px; color: #8c849c; font-family: Consolas, monospace; }
+  .empty-history { color: #8c849c; font-size: 13px; text-align: center; padding: 24px; font-style: italic; }
+
+  .validator-input {
+    width: 100%; background: #221e2c; border: 1px solid rgba(180,140,255,0.2);
+    border-radius: 10px; padding: 14px 16px; color: #e8e2f0;
+    font-family: Consolas, monospace; font-size: 14px; margin-bottom: 14px;
+  }
+  .validator-input:focus { outline: none; border-color: #b48cff; }
+  .result {
+    padding: 14px; border-radius: 10px; text-align: center;
+    font-weight: 600; font-size: 13px; margin-top: 10px; display: none;
+  }
+  .result.show { display: block; }
+  .result.ok { background: rgba(80,220,120,0.1); border: 1px solid rgba(80,220,120,0.3); color: #50dc78; }
+  .result.err { background: rgba(255,80,80,0.1); border: 1px solid rgba(255,80,80,0.3); color: #ff5050; }
+
+  .lua-output {
+    background: #0a0810; border: 1px solid rgba(180,140,255,0.2);
+    border-radius: 10px; padding: 16px; font-family: Consolas, monospace;
+    font-size: 11px; color: #b48cff; max-height: 300px;
+    overflow: auto; white-space: pre; margin-bottom: 12px;
+  }
+
+  .debug-panel {
+    background: #0a0810; border: 1px solid rgba(255,80,80,0.3);
+    border-radius: 10px; padding: 12px; margin-top: 20px;
+    font-family: Consolas, monospace; font-size: 10px;
+    color: #b48cff; max-height: 200px; overflow: auto;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .debug-panel .title { color: #ffb040; font-weight: bold; margin-bottom: 6px; }
+  .debug-panel .error { color: #ff5050; }
+  .debug-panel .ok { color: #50dc78; }
+
+  .footer { text-align: center; color: #8c849c; font-size: 11px; margin-top: 20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="brand-mark">H</div>
+    <div>
+      <h1>HOLLOW</h1>
+      <p>Key System · 24h · cooldown 24h</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tabs">
+      <div class="tab active" onclick="showTab('gen', this)">Gerar</div>
+      <div class="tab" onclick="showTab('val', this)">Validar</div>
+      <div class="tab" onclick="showTab('hist', this)">Histórico</div>
+      <div class="tab" onclick="showTab('exp', this)">Export</div>
+    </div>
+
+    <div class="pane active" id="pane-gen">
+      <div class="label">Sua Key (válida 24h)</div>
+      <div class="keybox empty" id="keyDisplay">clique em GERAR KEY</div>
+      <div class="countdown" id="countdown"><strong>--:--:--</strong> restantes</div>
+      <div class="cooldown" id="cooldown"><strong>--:--:--</strong> para liberar novo gerador</div>
+      <button class="btn btn-primary" id="genBtn" onclick="genKey()">GERAR KEY</button>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn btn-secondary" onclick="copyCurrent()" style="margin-top:0;">Copiar</button>
+        <button class="btn btn-secondary" onclick="clearKeys()" style="margin-top:0;">Limpar Keys</button>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-val">
+      <div class="label">Validar Key</div>
+      <input type="text" class="validator-input" id="valInput" placeholder="HOLLOW-XXXX-XXXX-XXXX">
+      <button class="btn btn-primary" onclick="validateKeyUI()">VALIDAR</button>
+      <div class="result" id="valResult"></div>
+    </div>
+
+    <div class="pane" id="pane-hist">
+      <div class="label">Keys Geradas</div>
+      <div class="history" id="historyList">
+        <div class="empty-history">nenhuma key gerada ainda</div>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-exp">
+      <div class="label">Tabela Lua</div>
+      <div class="lua-output" id="luaOutput">local VALID_KEYS = {
+    -- gere uma key primeiro
+}</div>
+      <button class="btn btn-ok" onclick="copyLua()">Copiar Tabela Lua</button>
+      <button class="btn btn-danger" onclick="forceReset()">Force Reset (limpa cooldown)</button>
+    </div>
+  </div>
+
+  <div class="debug-panel">
+    <div class="title">DEBUG LOG:</div>
+    <div id="debugLog">aguardando...</div>
+  </div>
+
+  <div class="footer">v4 · TTL 24h · cooldown 24h · localStorage</div>
+</div>
+
+<script>
+// ============ CONFIG ============
+var STORAGE_KEY  = 'hollow_keys_v4';
+var COOLDOWN_KEY = 'hollow_lastgen_v4';
+var CHARS        = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+var SEG_LEN      = 4;
+var PREFIX       = 'HOLLOW';
+var TTL_MS       = 24 * 60 * 60 * 1000;
+var COOLDOWN_MS  = 24 * 60 * 60 * 1000;
+var EPOCH_MS     = Date.UTC(2024, 0, 1);
+
+// ============ DEBUG ============
+function dbg(msg, isError) {
+  try {
+    var el = document.getElementById('debugLog');
+    if (el) {
+      var time = new Date().toLocaleTimeString();
+      var cls = isError ? 'error' : '';
+      var line = '<div class="' + cls + '">[' + time + '] ' + msg + '</div>';
+      if (el.innerHTML === 'aguardando...') {
+        el.innerHTML = line;
+      } else {
+        el.innerHTML = line + el.innerHTML;
+      }
+    }
+    if (window.console && console.log) {
+      console.log('[HOLLOW] ' + msg);
+    }
+  } catch(e) {}
+}
+
+// ============ HELPERS ============
+function pad(n, len) {
+  var s = String(n);
+  while (s.length < len) s = '0' + s;
+  return s;
+}
+
+function randomSegment() {
+  var s = '';
+  try {
+    var arr = new Uint32Array(SEG_LEN);
+    if (window.crypto && window.crypto.getRandomValues) {
+      window.crypto.getRandomValues(arr);
+    } else {
+      for (var i = 0; i < SEG_LEN; i++) arr[i] = Math.floor(Math.random() * 0xFFFFFFFF);
+    }
+    for (var i = 0; i < SEG_LEN; i++) {
+      s += CHARS.charAt(arr[i] % CHARS.length);
+    }
+  } catch(e) {
+    for (var j = 0; j < SEG_LEN; j++) {
+      s += CHARS.charAt(Math.floor(Math.random() * CHARS.length));
+    }
+  }
+  return s;
+}
+
+function expirySegment(ms) {
+  try {
+    var days = Math.floor((ms - EPOCH_MS) / 86400000);
+    if (days < 0) days = 0;
+    var b = days.toString(36).toUpperCase();
+    while (b.length < 4) b = '0' + b;
+    return b.slice(-4);
+  } catch(e) {
+    return '0001';
+  }
+}
+
+function decodeExpiry(key) {
+  try {
+    if (!key) return null;
+    key = key.toUpperCase();
+    var parts = key.split('-');
+    if (parts.length !== 4) return null;
+    if (parts[0] !== PREFIX) return null;
+    if (parts[1].length !== SEG_LEN) return null;
+    if (parts[2].length !== SEG_LEN) return null;
+    if (parts[3].length !== SEG_LEN) return null;
+    var days = parseInt(parts[3], 36);
+    if (isNaN(days) || days < 0) return null;
+    return EPOCH_MS + days * 86400000;
+  } catch(e) {
+    return null;
+  }
+}
+
+function fmtDuration(ms) {
+  if (ms <= 0) return '00:00:00';
+  var t = Math.floor(ms / 1000);
+  var h = Math.floor(t / 3600);
+  var m = Math.floor((t % 3600) / 60);
+  var s = t % 60;
+  return pad(h, 2) + ':' + pad(m, 2) + ':' + pad(s, 2);
+}
+
+function fmtTime(ts) {
+  try {
+    var d = new Date(ts);
+    return pad(d.getDate(), 2) + '/' + pad(d.getMonth() + 1, 2) +
+           ' ' + pad(d.getHours(), 2) + ':' + pad(d.getMinutes(), 2);
+  } catch(e) { return '—'; }
+}
+
+// ============ STORAGE ============
+function loadKeys() {
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    var arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch(e) {
+    dbg('loadKeys erro: ' + e.message, true);
+    return [];
+  }
+}
+
+function saveKeys(keys) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(keys));
+  } catch(e) {
+    dbg('saveKeys erro: ' + e.message, true);
+  }
+}
+
+function getLastGen() {
+  try {
+    var raw = localStorage.getItem(COOLDOWN_KEY);
+    return raw ? parseInt(raw, 10) : 0;
+  } catch(e) { return 0; }
+}
+
+function setLastGen(ts) {
+  try { localStorage.setItem(COOLDOWN_KEY, String(ts)); } catch(e) {}
+}
+
+function cooldownRemaining() {
+  var last = getLastGen();
+  if (!last) return 0;
+  return Math.max(0, (last + COOLDOWN_MS) - Date.now());
+}
+
+function timeLeft(exp) {
+  return Math.max(0, exp - Date.now());
+}
+
+// ============ TABS ============
+function showTab(name, btn) {
+  try {
+    var panes = document.querySelectorAll('.pane');
+    for (var i = 0; i < panes.length; i++) panes[i].classList.remove('active');
+    var tabs = document.querySelectorAll('.tab');
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+    var pane = document.getElementById('pane-' + name);
+    if (pane) pane.classList.add('active');
+    if (btn) btn.classList.add('active');
+    if (name === 'hist') renderHistory();
+    if (name === 'exp') renderLua();
+  } catch(e) {
+    dbg('showTab erro: ' + e.message, true);
+  }
+}
+
+// ============ GERAR KEY ============
+function genKey() {
+  try {
+    dbg('clicou GERAR');
+    var cd = cooldownRemaining();
+    if (cd > 0) {
+      dbg('cooldown ativo: ' + fmtDuration(cd), true);
+      return;
+    }
+
+    var now = Date.now();
+    var exp = now + TTL_MS;
+    var key = PREFIX + '-' + randomSegment() + '-' + randomSegment() + '-' + expirySegment(exp);
+    dbg('key gerada: ' + key);
+
+    var display = document.getElementById('keyDisplay');
+    if (display) {
+      display.textContent = key;
+      display.className = 'keybox';
+    }
+
+    var keys = loadKeys();
+    keys.unshift({ key: key, created: now, expires: exp });
+    if (keys.length > 50) keys.length = 50;
+    saveKeys(keys);
+    setLastGen(now);
+
+    startCountdown(exp);
+    updateGenBtn();
+    renderHistory();
+    renderLua();
+    dbg('OK, key salva', false);
+  } catch(e) {
+    dbg('ERRO genKey: ' + e.message, true);
+  }
+}
+
+// ============ COUNTDOWN ============
+var countdownInterval = null;
+function startCountdown(exp) {
+  try {
+    if (countdownInterval) clearInterval(countdownInterval);
+    var el = document.getElementById('countdown');
+    if (!el) return;
+    el.style.display = 'block';
+    function tick() {
+      try {
+        var ms = timeLeft(exp);
+        var strong = el.querySelector('strong');
+        if (strong) strong.textContent = fmtDuration(ms);
+      } catch(e) {}
+    }
+    tick();
+    countdownInterval = setInterval(tick, 1000);
+  } catch(e) {
+    dbg('startCountdown erro: ' + e.message, true);
+  }
+}
+
+// ============ COOLDOWN BTN ============
+var cooldownInterval = null;
+function updateGenBtn() {
+  try {
+    var btn = document.getElementById('genBtn');
+    var el = document.getElementById('cooldown');
+    if (!btn || !el) return;
+
+    var remaining = cooldownRemaining();
+    if (remaining > 0) {
+      btn.disabled = true;
+      btn.textContent = 'BLOQUEADO';
+      el.style.display = 'block';
+      var strong = el.querySelector('strong');
+      if (strong) strong.textContent = fmtDuration(remaining);
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'GERAR KEY';
+      el.style.display = 'none';
+    }
+  } catch(e) {}
+}
+
+function startCooldownTicker() {
+  if (cooldownInterval) clearInterval(cooldownInterval);
+  cooldownInterval = setInterval(updateGenBtn, 1000);
+  updateGenBtn();
+}
+
+// ============ COPY ============
+function copyText(txt, cb) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(function() {
+        if (cb) cb(true);
+      }).catch(function() {
+        fallbackCopy(txt, cb);
+      });
+    } else {
+      fallbackCopy(txt, cb);
+    }
+  } catch(e) {
+    fallbackCopy(txt, cb);
+  }
+}
+
+function fallbackCopy(txt, cb) {
+  try {
+    var ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.style.position = 'fixed';
+    ta.style.top = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    dbg('copiado (fallback)');
+    if (cb) cb(true);
+  } catch(e) {
+    dbg('copy falhou: ' + e.message, true);
+    if (cb) cb(false);
+  }
+}
+
+function copyCurrent() {
+  try {
+    var el = document.getElementById('keyDisplay');
+    if (!el || el.classList.contains('empty')) {
+      dbg('nada pra copiar', true);
+      return;
+    }
+    copyText(el.textContent, function(ok) {
+      dbg(ok ? 'copiado' : 'falhou');
+    });
+  } catch(e) {
+    dbg('copyCurrent erro: ' + e.message, true);
+  }
+}
+
+// ============ LIMPAR ============
+function clearKeys() {
+  try {
+    if (!confirm('Apagar keys salvas? (cooldown NÃO reseta)')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    var display = document.getElementById('keyDisplay');
+    display.textContent = 'clique em GERAR KEY';
+    display.className = 'keybox empty';
+    document.getElementById('countdown').style.display = 'none';
+    if (countdownInterval) clearInterval(countdownInterval);
+    renderHistory();
+    renderLua();
+    dbg('keys apagadas');
+  } catch(e) {
+    dbg('clearKeys erro: ' + e.message, true);
+  }
+}
+
+// ============ FORCE RESET ============
+function forceReset() {
+  try {
+    if (!confirm('FORCE RESET: apagar TUDO (keys + cooldown)?')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(COOLDOWN_KEY);
+    var display = document.getElementById('keyDisplay');
+    display.textContent = 'clique em GERAR KEY';
+    display.className = 'keybox empty';
+    document.getElementById('countdown').style.display = 'none';
+    if (countdownInterval) clearInterval(countdownInterval);
+    updateGenBtn();
+    renderHistory();
+    renderLua();
+    dbg('RESET completo — pode gerar de novo');
+    alert('Reset OK. Pode gerar nova key.');
+  } catch(e) {
+    dbg('forceReset erro: ' + e.message, true);
+  }
+}
+
+// ============ VALIDAR ============
+function validateKeyUI() {
+  try {
+    var input = document.getElementById('valInput').value;
+    input = (input || '').trim().toUpperCase();
+    var res = document.getElementById('valResult');
+    if (!input) {
+      res.className = 'result err show';
+      res.textContent = '✗ Digite uma key';
+      return;
+    }
+
+    var keys = loadKeys();
+    var found = null;
+    for (var i = 0; i < keys.length; i++) {
+      if (keys[i].key === input) { found = keys[i]; break; }
+    }
+
+    if (found) {
+      var ms = timeLeft(found.expires);
+      if (ms <= 0) {
+        res.className = 'result err show';
+        res.textContent = '✗ Expirada · gerada em ' + fmtTime(found.created);
+      } else {
+        res.className = 'result ok show';
+        res.textContent = '✓ Válida · ' + fmtDuration(ms);
+      }
+      return;
+    }
+
+    var decoded = decodeExpiry(input);
+    if (!decoded) {
+      res.className = 'result err show';
+      res.textContent = '✗ Formato inválido';
+      return;
+    }
+    var ms2 = timeLeft(decoded);
+    if (ms2 <= 0) {
+      res.className = 'result err show';
+      res.textContent = '✗ Expirada em ' + fmtTime(decoded);
+    } else {
+      res.className = 'result ok show';
+      res.textContent = '✓ Válida · ' + fmtDuration(ms2);
+    }
+  } catch(e) {
+    dbg('validateKey erro: ' + e.message, true);
+  }
+}
+
+// ============ HISTÓRICO ============
+function renderHistory() {
+  try {
+    var list = document.getElementById('historyList');
+    if (!list) return;
+    var keys = loadKeys();
+    if (keys.length === 0) {
+      list.innerHTML = '<div class="empty-history">nenhuma key gerada ainda</div>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      var ms = timeLeft(k.expires);
+      var status = 'ok', label = 'ativa';
+      if (ms <= 0) { status = 'expired'; label = 'expirada'; }
+      else if (ms < 3600000) { status = 'warn'; label = 'expira em breve'; }
+      var dur = ms <= 0 ? '—' : fmtDuration(ms);
+      html += '<div class="history-item ' + status + '">' +
+        '<div class="history-key">' + k.key + '</div>' +
+        '<div class="history-meta">' +
+        '<span>' + fmtTime(k.created) + ' → ' + fmtTime(k.expires) + '</span>' +
+        '<span class="history-status ' + status + '">' + label + ' · ' + dur + '</span>' +
+        '</div></div>';
+    }
+    list.innerHTML = html;
+  } catch(e) {
+    dbg('renderHistory erro: ' + e.message, true);
+  }
+}
+
+// ============ LUA EXPORT ============
+function buildLua() {
+  try {
+    var keys = loadKeys();
+    if (keys.length === 0) return 'local VALID_KEYS = {\n    -- gere uma key primeiro\n}';
+    var lines = ['local VALID_KEYS = {'];
+    for (var i = 0; i < keys.length; i++) {
+      var expSec = Math.floor(keys[i].expires / 1000);
+      lines.push('    ["' + keys[i].key + '"] = ' + expSec + ',');
+    }
+    lines.push('}');
